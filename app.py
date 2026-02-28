@@ -1,161 +1,139 @@
 from flask import Flask, render_template, request, jsonify
 import gspread
 from google.oauth2.service_account import Credentials
+from concurrent.futures import ThreadPoolExecutor
+import os
+import json
 
 app = Flask(__name__)
 
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-creds = Credentials.from_service_account_file("cred.json", scopes=scopes)
+# Load credentials from environment or file
+if os.getenv('GOOGLE_CREDENTIALS'):
+    creds_dict = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+else:
+    creds = Credentials.from_service_account_file("cred.json", scopes=scopes)
 client = gspread.authorize(creds)
-sheet_id = "1Gj9a6yZb3zGnwfLcqkW7MEDNihLSu0QoYqubCUe68yo"
+sheet_id = os.getenv('SHEET_ID', "1Gj9a6yZb3zGnwfLcqkW7MEDNihLSu0QoYqubCUe68yo")
 spreadsheet = client.open_by_key(sheet_id)
 
-# Hardcoded member list
-ALL_MEMBERS = [
-    {'team': 'Yudhishthira', 'index': 0, 'name': 'HG Ārādhan Pr'},
-    {'team': 'Yudhishthira', 'index': 1, 'name': 'Tanmay Pr'},
-    {'team': 'Yudhishthira', 'index': 2, 'name': 'Rohit Pr'},
-    {'team': 'Yudhishthira', 'index': 3, 'name': 'Amol Pr'},
-    {'team': 'Yudhishthira', 'index': 4, 'name': 'Anish Pr'},
-    {'team': 'Bhima', 'index': 0, 'name': 'Abhishek Pr'},
-    {'team': 'Bhima', 'index': 1, 'name': 'Hemant Pr'},
-    {'team': 'Bhima', 'index': 2, 'name': 'Āditya M. Pr'},
-    {'team': 'Bhima', 'index': 3, 'name': 'Shantanu Pr'},
-    {'team': 'Bhima', 'index': 4, 'name': 'Vedānt S. Pr'},
-    {'team': 'Arjuna', 'index': 0, 'name': 'Chaitanya Pr'},
-    {'team': 'Arjuna', 'index': 1, 'name': 'Achintya Pr'},
-    {'team': 'Arjuna', 'index': 2, 'name': 'Adithya S. Pr'},
-    {'team': 'Arjuna', 'index': 3, 'name': 'Shaurya Pr'},
-    {'team': 'Arjuna', 'index': 4, 'name': 'Asmit Pr'},
-    {'team': 'Arjuna', 'index': 5, 'name': 'Pranav I. Pr'},
-    {'team': 'Arjuna', 'index': 6, 'name': 'Manan Pr'},
-    {'team': 'Arjuna', 'index': 7, 'name': 'Mahesh Pr'},
-    {'team': 'Arjuna', 'index': 8, 'name': 'Sanket Pr'},
-    {'team': 'Arjuna', 'index': 9, 'name': 'Pranav B. Pr'},
-    {'team': 'Arjuna', 'index': 10, 'name': 'Rushikesh Pr'},
-    {'team': 'Arjuna', 'index': 11, 'name': 'Sumit Pr'},
-    {'team': 'Nakula', 'index': 0, 'name': 'Shriram Pr'},
-    {'team': 'Nakula', 'index': 1, 'name': 'Rishit pr'},
-    {'team': 'Nakula', 'index': 2, 'name': 'Vedant M. Pr'},
-    {'team': 'Nakula', 'index': 3, 'name': 'Anurag pr'},
-    {'team': 'Nakula', 'index': 4, 'name': 'Prithviraj Pr'},
-    {'team': 'Nakula', 'index': 5, 'name': 'Shaunak pr'},
-    {'team': 'Nakula', 'index': 6, 'name': 'Atul Pr'},
-    {'team': 'Nakula', 'index': 7, 'name': 'Atharva pr'},
-    {'team': 'Nakula', 'index': 8, 'name': 'Vipul pr'}
+# Members list
+MEMBERS = [
+    # Yudhishthira Team (5)
+    {"name": "HG Ārādhan Pr", "team": "Yudhishthira"},
+    {"name": "Tanmay Pr", "team": "Yudhishthira"},
+    {"name": "Rohit Pr", "team": "Yudhishthira"},
+    {"name": "Amol Pr", "team": "Yudhishthira"},
+    {"name": "Anish Pr", "team": "Yudhishthira"},
+    # Bhima Team (5)
+    {"name": "Abhishek Pr", "team": "Bhima"},
+    {"name": "Hemant Pr", "team": "Bhima"},
+    {"name": "Āditya M. Pr", "team": "Bhima"},
+    {"name": "Shantanu Pr", "team": "Bhima"},
+    {"name": "Vedānt S. Pr", "team": "Bhima"},
+    # Arjuna Team (12)
+    {"name": "Chaitanya Pr", "team": "Arjuna"},
+    {"name": "Achintya Pr", "team": "Arjuna"},
+    {"name": "Adithya S. Pr", "team": "Arjuna"},
+    {"name": "Shaurya Pr", "team": "Arjuna"},
+    {"name": "Asmit Pr", "team": "Arjuna"},
+    {"name": "Pranav I. Pr", "team": "Arjuna"},
+    {"name": "Manan Pr", "team": "Arjuna"},
+    {"name": "Mahesh Pr", "team": "Arjuna"},
+    {"name": "Sanket Pr", "team": "Arjuna"},
+    {"name": "Pranav B. Pr", "team": "Arjuna"},
+    {"name": "Rushikesh Pr", "team": "Arjuna"},
+    {"name": "Sumit Pr", "team": "Arjuna"},
+    # Nakula Team (9)
+    {"name": "Shriram Pr", "team": "Nakula"},
+    {"name": "Rishit pr", "team": "Nakula"},
+    {"name": "Vedant M. Pr", "team": "Nakula"},
+    {"name": "Anurag pr", "team": "Nakula"},
+    {"name": "Prithviraj Pr", "team": "Nakula"},
+    {"name": "Shaunak pr", "team": "Nakula"},
+    {"name": "Atul Pr", "team": "Nakula"},
+    {"name": "Atharva pr", "team": "Nakula"},
+    {"name": "Vipul pr", "team": "Nakula"},
 ]
 
-TEAMS = {
-    'Yudhishthira': {'count': 5, 'name_row': 6, 'data_start_row': 8, 'start_col': 5},
-    'Bhima': {'count': 5, 'name_row': 6, 'data_start_row': 8, 'start_col': 5},
-    'Arjuna': {'count': 12, 'name_row': 6, 'data_start_row': 8, 'start_col': 5},
-    'Nakula': {'count': 9, 'name_row': 5, 'data_start_row': 7, 'start_col': 5}
-}
-
-# Assuming 6 columns per person. 'location' at index 0 (not used in UI)
-# and then the fields from the UI.
-COL_MAP = {'level': 1, 'pa': 2, 'extra': 3, 'dk': 4, 'comment': 5}
+def get_all_members():
+    return MEMBERS
 
 @app.route('/')
 def index():
-    return render_template('index.html', teams=TEAMS)
+    return render_template('index.html')
+
+@app.route('/get_current_day')
+def get_current_day():
+    """Get today's date as day number"""
+    from datetime import datetime
+    return jsonify({"day": datetime.now().day})
 
 @app.route('/get_all_members')
-def get_all_members():
-    return jsonify(ALL_MEMBERS)
-
-@app.route('/get_attendance_data')
-def get_attendance_data():
-    team = request.args.get('team')
-    day = int(request.args.get('day'))
-    
-    worksheet = spreadsheet.worksheet(team)
-    team_info = TEAMS[team]
-    data_start_row = team_info['data_start_row']
-    start_col = team_info['start_col']
-    num_members = team_info['count']
-    
-    start_row = data_start_row + (day - 1) * 3
-    end_row = start_row + 2
-    
-    end_col = start_col + num_members * 6 - 1
-    
-    range_to_get = f'{gspread.utils.rowcol_to_a1(start_row, start_col)}:{gspread.utils.rowcol_to_a1(end_row, end_col)}'
-    
-    try:
-        data = worksheet.get(range_to_get, value_render_option='UNFORMATTED_VALUE')
-    except gspread.exceptions.APIError as e:
-        # This can happen if the range is invalid, e.g., for a day that doesn't exist in the sheet
-        return jsonify({'error': f'Could not retrieve data from sheet: {e}'}), 500
-
-    attendance_data = {}
-    sessions = ['sa', 'sb', 'ma']
-    
-    for row_idx, session in enumerate(sessions):
-        if row_idx < len(data):
-            row_data = data[row_idx]
-            for member_idx in range(num_members):
-                person_key = f"{team}_{member_idx}"
-                if person_key not in attendance_data:
-                    attendance_data[person_key] = {}
-
-                start_offset = member_idx * 6
-                
-                for field, col_idx in COL_MAP.items():
-                    data_col_idx = start_offset + col_idx
-                    if data_col_idx < len(row_data):
-                        value = row_data[data_col_idx]
-                        if field == 'dk':
-                            value = bool(value)
-                        attendance_data[person_key][f"{session}_{field}"] = value
-
-    return jsonify(attendance_data)
-
+def api_get_all_members():
+    members = get_all_members()
+    members_with_index = [{**m, "index": i} for i, m in enumerate(members)]
+    return jsonify(members_with_index)
 
 @app.route('/update_attendance', methods=['POST'])
 def update_attendance():
-    data = request.json
-    team = data['team']
-    day = data['day']
-    updates = data['updates']
-    
-    worksheet = spreadsheet.worksheet(team)
-    
-    team_info = TEAMS[team]
-    data_start_row = team_info['data_start_row']
-    start_col = team_info['start_col']
-    
-    session_map = {'sa': 0, 'sb': 1, 'ma': 2}
-    
-    cells_to_update = []
-    for update in updates:
-        person_idx = update['person_idx']
-        field_full = update['field']
-        value = update['value']
+    try:
+        data = request.json
+        day = data['day']
+        updates = data['updates']
+        all_members = get_all_members()
         
-        parts = field_full.split('_')
-        session = parts[0]
-        field = parts[1]
+        # Group by team
+        team_updates = {}
+        for update in updates:
+            member = all_members[update['person_idx']]
+            team = member['team']
+            if team not in team_updates:
+                team_updates[team] = []
+            team_updates[team].append({**update, 'member': member})
         
-        if field in COL_MAP and session in session_map:
-            row_offset = (day - 1) * 3 + session_map[session]
-            row = data_start_row + row_offset
-            
-            # 6 columns per person
-            col_offset = start_col + person_idx * 6
-            col = col_offset + COL_MAP[field]
-            
-            if field == 'dk':
-                value = 'TRUE' if value else 'FALSE'
-            
-            cells_to_update.append({'range': f'{gspread.utils.rowcol_to_a1(row, col)}', 'values': [[value]]})
-    
-    if cells_to_update:
-        worksheet.batch_update(cells_to_update)
-    
-    return jsonify({'success': True})
+        # Parallel processing for each team
+        def update_team(team, team_update_list):
+            try:
+                sheet = spreadsheet.worksheet(team)
+                team_members = [m for m in all_members if m['team'] == team]
+                batch_data = []
+                
+                for update in team_update_list:
+                    member = update['member']
+                    team_position = next(i for i, m in enumerate(team_members) if m['name'] == member['name'])
+                    field = update['field']
+                    value = update['value']
+                    row = 7 + day
+                    base_col = 4 + (team_position * 5)
+                    
+                    col_map = {'sa': 0, 'sb': 1, 'ma': 2, 'in_dk': 3, 'comment': 4}
+                    if field in col_map:
+                        col = base_col + col_map[field]
+                        col_letter = ''
+                        temp = col
+                        while temp >= 0:
+                            col_letter = chr(65 + (temp % 26)) + col_letter
+                            temp = temp // 26 - 1
+                        batch_data.append({'range': f'{col_letter}{row}', 'values': [[str(value)]]})
+                
+                if batch_data:
+                    sheet.batch_update(batch_data)
+            except Exception as e:
+                print(f"Error updating {team}: {e}")
+        
+        # Execute updates in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [executor.submit(update_team, team, updates) for team, updates in team_updates.items()]
+            for future in futures:
+                future.result()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.getenv('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)

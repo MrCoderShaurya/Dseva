@@ -3,66 +3,61 @@
 Mobile-friendly attendance management system for tracking devotee attendance across multiple teams and sessions.
 
 ## Features
-- Mobile-optimized UI with card-based layout
-- Real-time Google Sheets integration
-- Support for multiple teams (Yudhishthira, Bhima, Arjuna, Nakula)
-- Track attendance across 3 sessions (SA, SB, MA)
-- Search and filter devotees
-- Batch save functionality
+- ⚡ Instant loading with optimized performance
+- 📱 Mobile-responsive Excel-like interface
+- 🔄 Real-time Google Sheets integration
+- 👥 Support for 4 teams: Yudhishthira, Bhima, Arjuna, Nakula
+- 📊 Track attendance across 3 sessions (SA, SB, MA)
+- 💾 Fast batch save with parallel processing
+- 📅 Auto-loads current date
 
-## Deployment Instructions
-
-### Prerequisites
-- Python 3.8+
-- Google Sheets API credentials (cred.json)
+## Quick Start
 
 ### Local Setup
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+python app.py
+```
 
-2. Add your `cred.json` file (Google Service Account credentials)
+### Environment Variables
+- `GOOGLE_CREDENTIALS`: JSON string of service account credentials
+- `SHEET_ID`: Google Sheet ID (optional, defaults to hardcoded)
+- `PORT`: Port number (optional, defaults to 5000)
 
-3. Run the app:
-   ```bash
-   python app.py
-   ```
+## Deployment
 
-### Deploy to Render
-1. Push code to GitHub
-2. Create new Web Service on Render
-3. Connect your repository
-4. Add environment variable: Upload `cred.json` content
-5. Deploy!
+### Render
+1. Push to GitHub
+2. Create Web Service on Render
+3. Set environment variable: `GOOGLE_CREDENTIALS` = content of cred.json
+4. Deploy
 
-### Deploy to Heroku
-1. Install Heroku CLI
-2. Login: `heroku login`
-3. Create app: `heroku create your-app-name`
-4. Add credentials: `heroku config:set GOOGLE_CREDENTIALS="$(cat cred.json)"`
-5. Deploy: `git push heroku main`
+### Heroku
+```bash
+heroku create your-app-name
+heroku config:set GOOGLE_CREDENTIALS="$(cat cred.json)"
+git push heroku main
+```
 
-### Deploy to Railway
-1. Push code to GitHub
-2. Create new project on Railway
-3. Connect repository
-4. Add `cred.json` as a file in the dashboard
-5. Deploy automatically
+### Railway
+1. Connect GitHub repo
+2. Add `GOOGLE_CREDENTIALS` environment variable
+3. Deploy
 
 ## File Structure
 ```
 DesparateSeva/
-├── app.py              # Main Flask application
+├── app.py              # Flask application
 ├── templates/
-│   └── index.html      # Mobile-optimized UI
-├── cred.json           # Google API credentials (not in git)
-├── requirements.txt    # Python dependencies
-├── Procfile           # Deployment configuration
-└── .gitignore         # Git ignore rules
+│   └── index.html      # UI
+├── requirements.txt    # Dependencies
+├── Procfile           # Deployment config
+├── runtime.txt        # Python version
+└── .gitignore         # Git ignore
 ```
 
-## Important Notes
-- Keep `cred.json` secure and never commit it to version control
-- Update the `sheet_id` in app.py with your Google Sheet ID
-- The app is configured for production deployment (debug=False)
+## Tech Stack
+- Flask
+- Google Sheets API (gspread)
+- Parallel processing (ThreadPoolExecutor)
+- Mobile-first responsive design
