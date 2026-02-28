@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Management</title>
+    <style>
+        :root {
+            --primary-color: #4299e1;
+            --success-color: #48bb78;
+            --light-gray: #f5f7fa;
+            --medium-gray: #e2e8f0;
+            --dark-gray: #718096;
+            --text-color: #2d3748;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-gray);
+            color: var(--text-color);
+            padding-bottom: 70px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 { 
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .search-box, .date-picker {
+            flex: 1;
+            padding: 0.6rem;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .search-box:focus, .date-picker:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .content {
+            padding: 0.5rem;
+        }
+        
+        .devotee-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .devotee-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .devotee-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .devotee-team {
+            font-size: 0.85rem;
+            color: var(--dark-gray);
+        }
+
+        .session-block {
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .session-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .field-label {
+            font-size: 0.75rem;
+            color: var(--dark-gray);
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        select, input[type="text"] {
+            padding: 0.6rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 16px;
+            background: white;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            background: white;
+            border-radius: 6px;
+        }
+
+        .checkbox-group input[type="checkbox"] { 
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+
+        .btn-save {
+            display: none;
+        }
+
+        .floating-save {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem;
+            background: #fff;
+            border-top: 2px solid var(--medium-gray);
+            z-index: 99;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-save-all {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: var(--success-color);
+            color: white;
+            cursor: pointer;
+        }
+        .btn-save-all:active { opacity: 0.8; }
+
+        .footer {
+            display: none;
+        }
+        
+        .status {
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+        }
+        .status.success { background: #c6f6d5; color: #22543d; }
+        .status.error { background: #fed7d7; color: #742a2a; }
+        .status.info { background: #bee3f8; color: #2a4365; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Attendance Management</h1>
+            <div class="header-controls">
+                <input type="date" class="date-picker" id="datePicker">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search devotee..." oninput="filterDevotees()">
+            </div>
+        </div>
+
+        <div class="content" id="devoteeList"></div>
+
+        <div class="floating-save">
+            <button class="btn-save-all" onclick="saveAll()">💾 Save All Changes</button>
+        </div>
+
+        <div class="footer">
+            <span id="status" class="status"></span>
+        </div>
+    </div>
+
+    <script>
+        const levelOptions = ['', 'L1', 'L2', 'L3', 'L4', 'L5', 'L5+'];
+        const paOptions = ['', 'P', 'A'];
+        const extraOptions = ['', 'S', 'Home', 'H'];
+        
+        let allMembers = [];
+        let filteredMembers = [];
+        let pendingChanges = {}; // Use an object to store changes, keyed by a unique ID
+
+        function setCurrentDate() {
+            const datePicker = document.getElementById('datePicker');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            datePicker.value = `${year}-${month}-${day}`;
+        }
+
+        async function initializeApp() {
+            setCurrentDate();
+            document.getElementById('datePicker').addEventListener('change', loadDataForSelectedDate);
+            
+            try {
+                const response = await fetch('/get_all_members');
+                allMembers = await response.json();
+                filteredMembers = allMembers;
+                renderTable();
+                await loadDataForSelectedDate();
+            } catch (error) {
+                console.error("Failed to fetch members:", error);
+                showStatus('Could not load members.', 'error');
+            }
+        }
+
+        function filterDevotees() {
+            const search = document.getElementById('searchBox').value.toLowerCase();
+            filteredMembers = allMembers.filter(m => 
+                m.name.toLowerCase().includes(search) || 
+                m.team.toLowerCase().includes(search)
+            );
+            renderTable();
+            // After re-rendering, re-apply the data from the sheet
+            loadDataForSelectedDate();
+        }
+
+        function renderTable() {
+            const container = document.getElementById('devoteeList');
+            container.innerHTML = '';
+            
+            filteredMembers.forEach(member => {
+                const card = document.createElement('div');
+                card.className = 'devotee-card';
+                
+                const sessions = ['SA', 'SB', 'MA'];
+                let sessionsHTML = '';
+                
+                sessions.forEach(session => {
+                    const sid = `${member.team}_${member.index}_${session.toLowerCase()}`;
+                    sessionsHTML += `
+                        <div class="session-block">
+                            <span class="session-label">${session}</span>
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label class="field-label">Level</label>
+                                    <select id="${sid}_level" onchange="trackChange('${member.team}', ${member.index}, '${session.toLowerCase()}_level', this.value)">
+                                        ${levelOptions.map(opt => `<option value="${opt}">${opt || '---'}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">P/A</label>
+                                    <select id="${sid}_pa" onchange="trackChange('${member.team}', ${member.index}, '${session.toLowerCase()}_pa', this.value)">
+                                        ${paOptions.map(opt => `<option value="${opt}">${opt || '---'}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label class="field-label">Extra</label>
+                                    <select id="${sid}_extra" onchange="trackChange('${member.team}', ${member.index}, '${session.toLowerCase()}_extra', this.value)">
+                                        ${extraOptions.map(opt => `<option value="${opt}">${opt || '---'}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">DK</label>
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="${sid}_dk" onchange="trackChange('${member.team}', ${member.index}, '${session.toLowerCase()}_dk', this.checked)">
+                                        <span>Devotee Katha</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label class="field-label">Comment</label>
+                                <input type="text" id="${sid}_comment" placeholder="Add comment..." onchange="trackChange('${member.team}', ${member.index}, '${session.toLowerCase()}_comment', this.value)">
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                card.innerHTML = `
+                    <div class="devotee-header">
+                        <div>
+                            <div class="devotee-name">${member.name}</div>
+                            <div class="devotee-team">${member.team}</div>
+                        </div>
+                    </div>
+                    ${sessionsHTML}
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        async function loadDataForSelectedDate() {
+            const dateStr = document.getElementById('datePicker').value;
+            if (!dateStr) return;
+
+            const date = new Date(dateStr);
+            const day = date.getDate();
+            
+            const teamsToFetch = [...new Set(filteredMembers.map(m => m.team))];
+
+            showStatus('Loading data...', 'info');
+            
+            let allDataLoaded = true;
+
+            for (const team of teamsToFetch) {
+                try {
+                    const response = await fetch(`/get_attendance_data?team=${team}&day=${day}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                         console.error(`Error from server for team ${team}:`, data.error);
+                         allDataLoaded = false;
+                         continue;
+                    }
+
+                    for (const personKey in data) {
+                        for (const fieldKey in data[personKey]) {
+                            const elementId = `${personKey}_${fieldKey}`;
+                            const element = document.getElementById(elementId);
+                            
+                            if (element) {
+                                if (element.type === 'checkbox') {
+                                    element.checked = data[personKey][fieldKey];
+                                } else {
+                                    element.value = data[personKey][fieldKey] || '';
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Failed to load data for team ${team}:`, error);
+                    allDataLoaded = false;
+                }
+            }
+
+            if(allDataLoaded) {
+                showStatus('Data loaded.', 'success');
+            } else {
+                showStatus('Finished loading, but some data may be missing.', 'error');
+            }
+        }
+
+        function trackChange(team, personIdx, field, value) {
+            const changeKey = `${team}_${personIdx}_${field}`;
+            pendingChanges[changeKey] = { team, person_idx: personIdx, field, value };
+        }
+
+        async function saveDevotee(team, personIdx) {
+            const date = new Date(document.getElementById('datePicker').value);
+            const day = date.getDate();
+            
+            const updates = Object.values(pendingChanges).filter(c => c.team === team && c.person_idx === personIdx);
+            
+            if (updates.length === 0) {
+                showStatus('No changes to save for this devotee.', 'info');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/update_attendance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({team, day, updates})
+                });
+                 if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                showStatus('Saved successfully!', 'success');
+                // Remove saved changes from pending list
+                updates.forEach(u => {
+                    const changeKey = `${u.team}_${u.person_idx}_${u.field}`;
+                    delete pendingChanges[changeKey];
+                });
+            } catch (error) {
+                console.error("Save failed:", error);
+                showStatus('Save failed. Check console for details.', 'error');
+            }
+        }
+
+        async function saveAll() {
+            if (Object.keys(pendingChanges).length === 0) {
+                showStatus('No changes to save.', 'info');
+                return;
+            }
+
+            const date = new Date(document.getElementById('datePicker').value);
+            const day = date.getDate();
+            
+            const teamGroups = {};
+            Object.values(pendingChanges).forEach(change => {
+                if (!teamGroups[change.team]) teamGroups[change.team] = [];
+                teamGroups[change.team].push(change);
+            });
+
+            showStatus('Saving all changes...', 'info');
+            
+            try {
+                for (const team in teamGroups) {
+                    await fetch('/update_attendance', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({team, day, updates: teamGroups[team]})
+                    });
+                }
+                pendingChanges = {};
+                showStatus('All changes saved!', 'success');
+            } catch (error) {
+                console.error("Save failed:", error);
+                showStatus('Save failed. Check console.', 'error');
+            }
+        }
+
+        function showStatus(msg, type) {
+            const btn = document.querySelector('.btn-save-all');
+            const originalText = btn.textContent;
+            btn.textContent = msg;
+            btn.style.background = type === 'success' ? '#48bb78' : type === 'error' ? '#f56565' : '#4299e1';
+            setTimeout(() => { 
+                btn.textContent = originalText;
+                btn.style.background = '#48bb78';
+            }, 2000);
+        }
+        
+        // Initialize the app when the DOM is ready
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>
